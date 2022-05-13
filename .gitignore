@@ -1,0 +1,9 @@
+output
+output_npy
+flagged
+.idea
+.vscode
+checkpoints
+__pycache__
+*.db
+.ipynb_checkpoints

@@ -1,3 +1,9 @@
+
+Changes in the fork:
+* Colab notebook that spawns a gradio app
+* Abstracted out sampling logic to be reusable
+----
+
 # GLID-3-XL
 
 GLID-3-xl is the [1.4B latent diffusion](https://github.com/CompVis/latent-diffusion#april-2022) model from CompVis back-ported to the guided diffusion codebase
