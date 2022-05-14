@@ -1,7 +1,12 @@
 
+[colab]: <https://colab.research.google.com/assets/colab-badge.svg>
+[colab-cin]: <https://colab.research.google.com/github/vanga/glid-3-xl/blob/master/notebooks/glid-3-xl.ipynb>
+
+
 Changes in the fork:
-* Colab notebook that spawns a gradio app
+* Colab notebook that spawns a gradio app [![][colab]][colab-cin]
 * Abstracted out sampling logic to be reusable
+
 ----
 
 # GLID-3-XL
