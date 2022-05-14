@@ -47,7 +47,7 @@ class MakeCutouts(nn.Module):
 
 
 class Args:
-    def __init__(self, model_variant):
+    def __init__(self, model_variant="base"):
         if model_variant == "jack":
             self.model_path = "checkpoints/finetune.pt"
         elif model_variant == "base":
@@ -82,6 +82,10 @@ class Args:
         self.cutn = 16
         self.ddim = False
         self.ddpm = False
+
+    def __str__(self):
+        attrs = vars(self)
+        return ', '.join("%s: %s" % item for item in attrs.items())
 
 
 def spherical_dist_loss(x, y):
@@ -414,26 +418,35 @@ def do_run(args, model_params, models):
     else:
         sample_fn = diffusion.plms_sample_loop_progressive
 
-    def save_sample(i, sample, clip_score=False):
-        os.makedirs("output", exist_ok=True)
-        os.makedirs("output_npy", exist_ok=True)
-        for k, image in enumerate(sample['pred_xstart'][:args.batch_size]):
+    def decode_image(sample):
+        images = []
+        for image in sample['pred_xstart'][:args.batch_size]:
             image /= 0.18215
             im = image.unsqueeze(0)
             out = ldm.decode(im)
+            res = {
+                'npy': image.detach().cpu().numpy(),
+                'pil': TF.to_pil_image(out.squeeze(0).add(1).div(2).clamp(0, 1))
+            }
+            images.append(res)
+        return images
 
+    def save_sample(i, sample, clip_score=False):
+        os.makedirs("output", exist_ok=True)
+        os.makedirs("output_npy", exist_ok=True)
+        for k, image_o in enumerate(images):
+            img_npy = image_o['npy']
+            img_pil = image_o['pil']
             npy_filename = f'output_npy/{args.prefix}{i * args.batch_size + k:05}.npy'
             with open(npy_filename, 'wb') as outfile:
-                np.save(outfile, image.detach().cpu().numpy())
-
-            out = TF.to_pil_image(out.squeeze(0).add(1).div(2).clamp(0, 1))
+                np.save(outfile, img_npy)
 
             filename = f'output/{args.prefix}{i * args.batch_size + k:05}.png'
-            out.save(filename)
+            img_pil.save(filename)
 
             if clip_score:
                 image_emb = clip_model.encode_image(
-                    clip_preprocess(out).unsqueeze(0).to(device))
+                    clip_preprocess(img_pil).unsqueeze(0).to(device))
                 image_emb_norm = image_emb / \
                     image_emb.norm(dim=-1, keepdim=True)
 
@@ -447,14 +460,15 @@ def do_run(args, model_params, models):
                 os.rename(npy_filename, npy_final)
 
     if args.init_image:
-        init = Image.open(args.init_image).convert('RGB')
-        init = init.resize((int(args.width),  int(args.height)), Image.LANCZOS)
+        init = args.init_image.resize(
+            (int(args.width),  int(args.height)), Image.LANCZOS)
         init = TF.to_tensor(init).to(device).unsqueeze(0).clamp(0, 1)
         h = ldm.encode(init * 2 - 1).sample() * 0.18215
         init = torch.cat(args.batch_size*2*[h], dim=0)
     else:
         init = None
 
+    res_images = []
     for i in range(args.num_batches):
         cur_t = diffusion.num_timesteps - 1
 
@@ -473,6 +487,9 @@ def do_run(args, model_params, models):
         for j, sample in enumerate(samples):
             cur_t -= 1
             if j % 5 == 0 and j != diffusion.num_timesteps - 1:
+                images = decode_image(sample)
                 save_sample(i, sample)
 
+        images = decode_image(sample)
         save_sample(i, sample, args.clip_score)
+        return images

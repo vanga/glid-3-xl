@@ -10,7 +10,7 @@ from sample_api import *
 # base_dir = ""
 output_dir = "./output"
 
-args = Args()
+args = Args("jack")
 
 model_params, models = load_models(args)
 
@@ -45,7 +45,7 @@ iface = gr.Interface(
                           default="", label=None, optional=False),
         "text",
         gr.inputs.Image(shape=(256, 256), optional=True,
-                        type="filepath", label='Starting Image'),
+                        type="pil", label='Starting Image'),
         gr.inputs.Slider(
             0, 25, 1, default=0, label="Image guidance strength (Must be used when using image cues)"),
         gr.inputs.Slider(1, 15, 1, default=5,
